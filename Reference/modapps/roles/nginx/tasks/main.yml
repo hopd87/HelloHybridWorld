@@ -1,0 +1,41 @@
+---
+- name: Install EPEL on CentOS
+  yum: name=epel-release state=installed
+  when: ansible_distribution == 'CentOS'
+
+- name: Download EPEL on RHEL
+  get_url: url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm dest=/tmp
+  when: ansible_distribution == 'RedHat'
+
+- name: Install EPEL on RHEL
+  yum: name=/tmp/epel-release-latest-7.noarch.rpm state=present
+  when: ansible_distribution == 'RedHat'
+
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: Install NGINX
+  yum: name=nginx state=present
+  notify: restart nginx
+
+- name: deploy firewall rule
+  command: iptables -I INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: save firewall rule
+  command: service iptables save
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: deploy firewall rule
+  command: firewall-cmd --zone=public --add-port=80/tcp --permanent
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7'
+
+- name: Start NGINX
+  service: name=nginx state=started enabled=yes
+
+- name: wait for NGINX to start
+  wait_for: port=80

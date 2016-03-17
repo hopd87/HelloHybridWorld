@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# An example hook script that is called after a successful
+# commit is made.
+#
+# To enable this hook, rename this file to "post-commit".
+
+curl http://192.168.1.26:8080/jenkins/job/EMC_RESTAPP/build
+
+echo
+echo "Build triggered successfully"
+echo "----------------------------"
+echo "If your Jenkins server is configured with any post-build steps (like deployments), these will also be triggered to execute once the build completes.”
+echo

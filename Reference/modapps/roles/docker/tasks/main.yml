@@ -1,0 +1,23 @@
+---
+- name: Copy Docker repo definiton
+  copy: src=docker.repo dest=/etc/yum.repos.d
+
+- name: Install Docker
+  yum: name=docker-engine state=present
+  notify: restart docker
+
+- name: Install Certificate Authority
+  yum: name=ca-certificates state=present
+  notify: restart ca
+
+- name: Enable ca 
+  command: update-ca-trust enable
+  notify: restart ca
+
+- name: Transfer EMC certificates
+  copy: src=EMCcerts.tar dest=/tmp
+
+- name: Extract EMC certificates
+  command: tar xvf /tmp/EMCcerts.tar -C "/etc/pki/ca-trust/source/anchors" creates=/etc/pki/ca-trust/source/anchors/EMC_CA.crt
+  notify: restart ca
+

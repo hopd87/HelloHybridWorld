@@ -1,0 +1,24 @@
+{
+	"firstName" : "Dexter",
+	"lastName" : "Haven",
+	"contactphone" : "888 555-1211",
+	"email" : "Dexter@gmail.com",
+	"city" : "Philadelphia",
+	"state" : "PA"
+}
+{
+	"firstName" : "Mortimer",
+	"lastName" : "Brewster",
+	"contactphone" : "888 555-1212",
+	"email" : "Mortimer@hotmail.com",
+	"city" : "Brooklyn",
+	"state" : "NY"
+}
+{
+	"firstName" : "John",
+	"lastName" : "Robie",
+	"contactphone" : "888 555-1213",
+	"email" : "TheCat@outlook.com",
+	"city" : "Paris",
+	"state" : "NY"
+}

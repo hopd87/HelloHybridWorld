@@ -1,0 +1,6 @@
+---
+java_ver: 1.7
+mvn_ver: 3.3.9
+mvn_name: "apache-maven-{{mvn_ver}}"
+mvn_install_base: "/usr/share"
+mvn_install_path: "{{mvn_install_base}}/{{mvn_name}}"

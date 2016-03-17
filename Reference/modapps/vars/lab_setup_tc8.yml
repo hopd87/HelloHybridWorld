@@ -1,0 +1,13 @@
+java_ver: 1.8
+mvn_ver: 3.3.9
+mvn_name: "apache-maven-{{mvn_ver}}"
+mvn_install_base: "/usr/share"
+mvn_install_path: "{{mvn_install_base}}/{{mvn_name}}"
+tc_ver: 8.0.30
+tc_name: "apache-tomcat-{{tc_ver}}"
+tc_install_base: "/usr/share"
+tc_instance_name: "tomcat_BASE"
+tc_install_path: "{{tc_install_base}}/{{tc_instance_name}}/{{tc_name}}"
+j_install_path: /usr/share/jenkins
+proj_path: /root/Development
+proj_name: MA-Backend

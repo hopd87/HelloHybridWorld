@@ -1,0 +1,2 @@
+# Omit the Maven-generated "target" subdirectory and its contents
+target/

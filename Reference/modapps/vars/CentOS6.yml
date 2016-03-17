@@ -1,0 +1,1 @@
+get_ip_addr: "awk '/inet addr/{print substr($2,6)}'"

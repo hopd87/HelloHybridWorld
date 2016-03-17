@@ -1,0 +1,7 @@
+---
+- name: restart ca 
+  command: update-ca-trust extract
+
+- name: restart docker 
+  service: name=docker state=restarted
+

@@ -1,0 +1,12 @@
+---
+java_ver: 1.7
+mvn_ver: 3.3.9
+mvn_name: "apache-maven-{{mvn_ver}}"
+mvn_install_base: "/usr/share"
+mvn_install_path: "{{mvn_install_base}}/{{mvn_name}}"
+tc_ver: 7.0.33
+tc_name: "tomcat"
+tc_install_base: "/usr/share"
+tc_instance_name: "tomcat"
+tc_install_path: "{{tc_install_base}}/{{tc_name}}"
+j_install_path: /usr/share/jenkins

@@ -1,0 +1,5 @@
+---
+- hosts: lbservers
+  tasks:
+    - name: Install NGINX
+      yum: name=nginx state=present

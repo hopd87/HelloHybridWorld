@@ -1,0 +1,195 @@
+---
+- hosts: aservers
+  tasks:
+    - debug: msg="Preparing Lab Pods for Modern Apps course"
+
+- hosts: linux
+  vars_files:
+    - vars/{{ansible_distribution}}{{ansible_distribution_major_version}}.yml
+
+  tasks:
+    - debug: msg="Host {{ansible_hostname}} {{ansible_default_ipv4.address}}
+                  is running {{ansible_distribution}} version {{ansible_distribution_major_version}}"
+
+    - name: Configure root user account
+      include: includes/adduser_playbook.yml user_name=root user_group=root user_pass=emc123
+
+    - name: Fetch SSH key for root
+      fetch: src=/root/.ssh/id_rsa.pub dest=/tmp/id_rsa.pub.root.{{ ansible_hostname }} flat=yes
+
+    - name: Insert HOSTNAME into /etc/hosts
+      lineinfile:
+        dest: /etc/hosts
+        regexp: "^{{ansible_default_ipv4.address}}"
+        line: "{{ansible_default_ipv4.address}} {{ansible_hostname}}"
+
+    - name: Install emacs
+      yum: name=emacs state=present
+
+    - name: Install dos2unix
+      yum: name=dos2unix state=present
+
+    - name: Install tree
+      yum: name=tree state=present
+
+    - name: Install ntp
+      yum: name=ntp state=present
+
+    - name: Configure NTP access
+      lineinfile:
+        dest: /etc/ntp.conf
+        insertafter: "^#restrict"
+        line: "restrict 10.0.0.0 mask 255.255.255.0 nomodify notrap"
+
+    - name: Configure NTP server
+      lineinfile:
+        dest: /etc/ntp.conf
+        insertbefore: "^server 0"
+        line: "server emlf6ad1.training.globalservices.emc.com iburst"
+
+    - name: Restart NTP
+      service: name=ntpd state=started enabled=yes
+
+- hosts: devservers
+  vars:
+    which_tomcat: 7
+
+  vars_files:
+    - vars/lab_setup_tc{{which_tomcat}}.yml
+
+  roles:
+    - git
+    - mongo-shell
+    - maven
+    - docker
+    - tomcat{{which_tomcat}}
+    - jenkins_tc{{which_tomcat}}
+
+  tasks:
+    # Install python pip
+    - name: Install Python pip
+      yum: name=python-pip state=present
+
+    # Install (requests) python package.
+    - name: Install Python requests package
+      pip: name=requests
+
+    # Copy the initial state of the REST API Backend source code
+    #
+    - name: Make directory for source code
+      file: path={{proj_path}} state=directory
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+    - name: Copy source directory
+      synchronize: src=files/{{proj_name}} dest={{proj_path}}
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+    - name: Set permissions on project directory
+      file: path={{proj_path}}/{{proj_name}} mode=777 state=directory
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+    # Copy the sample mongo import file
+    #
+    - name: Copy test_load.json
+      copy: src=files/test_load.json dest=/tmp
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+    # Copy the master resources for students who do not want to use the editor
+    #
+    - name: Copy masters
+      synchronize: src=files/master dest=/home
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+    - name: Set permissions on masters
+      file: path=/home/master mode=444 state=directory recurse=yes
+      when: ansible_default_ipv4.address == "192.168.1.26"
+
+- hosts: lbservers
+  tasks:
+    - name: Set SELinux to disabled
+      lineinfile:
+        dest: /etc/selinux/config
+        regexp: "^SELINUX="
+        line: "SELINUX=disabled"
+
+    - name: Restart machine
+      shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+      async: 1
+      poll: 0
+      sudo: true
+      ignore_errors: true
+
+    - name: Wait for server to restart
+      local_action:
+        module: wait_for
+          host=192.168.1.22
+          port=22
+          delay=30
+          timeout=300
+      sudo: false
+
+- hosts: gitservers
+  roles:
+    - git-server
+
+  tasks:
+    # Create a placeholder directory for the git repositories
+    #
+    - name: Make directory for git repos
+      file: path=/share state=directory owner=git group=git
+
+    - name: Give root from 192.168.1.27 SSH access to the root user account on the git server
+      authorized_key: user=root key="{{ lookup('file', '/tmp/id_rsa.pub.root.epaas-app1-p1-linux-27') }}"
+
+    - name: Give root from 192.168.1.27 SSH access to the git user account on the git server
+      authorized_key: user=git key="{{ lookup('file', '/tmp/id_rsa.pub.root.epaas-app1-p1-linux-27') }}"
+
+- hosts: haservers
+  roles:
+    - docker
+
+- hosts: tcservers
+  vars:
+    which_tomcat: 7
+
+  vars_files:
+    - vars/lab_setup_tc{{which_tomcat}}.yml
+
+  roles:
+    - tomcat{{which_tomcat}}
+
+  tasks:
+    # Create a placeholder directory for the Docker files
+    #
+    - name: Make directory for Docker files
+      file: path=/root/Docker state=directory
+
+    - name: Give root from 192.168.1.23 SSH access to the root user account on the tomcat server
+      authorized_key: user=root key="{{ lookup('file', '/tmp/id_rsa.pub.root.epaas-app1-p1-linux-23') }}"
+
+    - name: Give tomcat from 192.168.1.26 SSH access to the tomcat user account on the tomcat server
+      authorized_key: user=tomcat key="{{ lookup('file', '/tmp/id_rsa.pub.tomcat.epaas-app1-p1-linux-26') }}"
+
+    - name: Give tomcat from 192.168.1.27 SSH access to the tomcat user account on the tomcat server
+      authorized_key: user=tomcat key="{{ lookup('file', '/tmp/id_rsa.pub.tomcat.epaas-app1-p1-linux-27') }}"
+
+- hosts: dbservers
+  roles:
+    - mongo
+
+  tasks:
+    # Add EMCRESTDB and contact collection to MongoDB
+    #
+    - name: Determine if EMCRESTTDB is already present
+      shell: "mongo --quiet --eval 'db.getMongo().getDBNames()' | grep EMCRESTDB"
+      register: cmdout
+      ignore_errors: yes
+
+    - name: Copy contact.json
+      copy: src=files/contact.json dest=/tmp
+      when: cmdout.stdout == ""
+
+    - name: Import contact.json
+      command: mongoimport --db EMCRESTDB --collection contact --file /tmp/contact.json
+      when: cmdout.stdout == ""
+

@@ -1,0 +1,1 @@
+get_ip_addr: "awk '/inet /{print $2}'"

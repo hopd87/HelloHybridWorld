@@ -1,0 +1,88 @@
+---
+- debug: msg="Deploying Jenkins on {{ansible_hostname}} {{ansible_default_ipv4.address}}
+              Deploying java Version={{java_ver}}
+              Jenkins install path={{j_install_path}} app name {{app_name}}
+              Tomcat instance name {{tc_instance_name}} install base {{tc_install_base}} install path {{tc_install_path}}"
+
+- name: Install EPEL on CentOS
+  yum: name=epel-release state=installed
+  when: ansible_distribution == 'CentOS'
+
+- name: Download EPEL on RHEL
+  get_url: url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm dest=/tmp
+  when: ansible_distribution == 'RedHat'
+
+- name: Install EPEL on RHEL
+  yum: name=/tmp/epel-release-latest-7.noarch.rpm state=present
+  when: ansible_distribution == 'RedHat'
+
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: Install Java {{java_ver}}
+  yum: name=java-{{java_ver}}.0-openjdk-devel state=present
+
+- name: Ensure that Java {{java_ver}} is the default alternative java selected
+  alternatives: name=java path=/usr/lib/jvm/jre-{{java_ver}}.0-openjdk.x86_64/bin/java
+
+- name: Ensure that Java {{java_ver}} is the default alternative javac selected
+  alternatives: name=javac path=/usr/lib/jvm/java-{{java_ver}}.0-openjdk.x86_64/bin/javac
+
+- name: Make directory for Jenkins
+  file: path={{j_install_path}} state=directory
+
+- name: Download Jenkins tomcat app
+  get_url: url=http://mirrors.jenkins-ci.org/war/latest/{{app_name}} dest={{j_install_path}}/{{app_name}}
+
+- name: Change ownership of Jenkins installation
+  file: path={{j_install_path}} owner=tomcat group=tomcat state=directory recurse=yes
+
+- name: Copy Jenkins environment variables definiton
+  copy: src=jenkins.sh dest=/etc/profile.d mode=0644
+
+- name: Determine if JENKINS_HOME is already present
+  shell: "grep JENKINS_HOME /etc/init.d/{{tc_instance_name}}"
+  register: cmdout
+  ignore_errors: yes
+
+- name: Insert JENKINS_HOME into tomcat startup script
+  lineinfile:
+    dest: /etc/init.d/{{tc_instance_name}}
+    insertafter: "^TOMCAT"
+    line: "\n#Location of JENKINS_HOME\nexport JENKINS_HOME={{j_install_path}}"
+  notify: restart tomcat
+  when: cmdout.stdout == ""
+
+- stat: path="{{j_install_path}}/{{app_name}}"
+  register: srcpath
+
+- stat: path="{{tc_install_path}}/webapps"
+  register: tompath
+
+- stat: path="{{tc_install_path}}/webapps/{{app_name}}"
+  register: dstpath
+
+- name: remove existing version of the app
+  file: path="{{tc_install_path}}/webapps/{{app_name}}" state=absent
+  when: dstpath.stat.exists == true
+
+- name: copy app into tomcat
+  command: cp "{{j_install_path}}/{{app_name}}" "{{tc_install_path}}/webapps"
+  when: tompath.stat.exists == true and srcpath.stat.exists == true
+  notify: restart tomcat
+
+- name: Allow read and execute permissions on /root for Jenkins + Maven
+  file: path=/root state=directory mode=755
+
+- name: Make directory for Maven work from Jenkins
+  file: path="{{tc_install_base}}/.m2" owner=tomcat group=tomcat state=directory
+
+- name: Make directory for Jenkins work from Jenkins
+  file: path="{{tc_install_base}}/.jenkins" owner=tomcat group=tomcat state=directory
+
+- name: Copy Jenkins config file
+  copy: src=config.xml dest={{j_install_path}}/config.xml
+
+- name: Copy Jenkins Maven Config file
+  template: src=hudson.tasks.Maven.xml dest={{j_install_path}}/hudson.tasks.Maven.xml

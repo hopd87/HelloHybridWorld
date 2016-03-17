@@ -1,0 +1,35 @@
+---
+- name: Install EPEL on CentOS
+  yum: name=epel-release state=installed
+  when: ansible_distribution == 'CentOS'
+
+- name: Download EPEL on RHEL
+  get_url: url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm dest=/tmp
+  when: ansible_distribution == 'RedHat'
+
+- name: Install EPEL on RHEL
+  yum: name=/tmp/epel-release-latest-7.noarch.rpm state=present
+  when: ansible_distribution == 'RedHat'
+
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: add group "git"
+  group: name=git
+
+- name: add user "git"
+  user:
+    name: git
+    group: git
+    password: "{{'git'|password_hash('sha512')}}"
+    shell: /bin/bash
+    generate_ssh_key: yes
+    ssh_key_file: .ssh/id_rsa
+    update_password: on_create
+
+- name: Give root SSH access to this user
+  authorized_key: user=git key="{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+- name: Install git
+  yum: name=git-all state=present

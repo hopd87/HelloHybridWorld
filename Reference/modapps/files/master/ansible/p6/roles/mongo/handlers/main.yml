@@ -1,0 +1,6 @@
+- name: reload firewall
+  service: name=iptables state=restarted
+
+- name: restart mongodb
+  service: name={{svcname}} state=restarted
+

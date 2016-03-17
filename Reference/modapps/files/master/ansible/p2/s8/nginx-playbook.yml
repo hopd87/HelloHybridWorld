@@ -1,0 +1,20 @@
+---
+- hosts: lbservers
+  tasks:
+    - name: Install NGINX
+      yum: name=nginx state=present
+
+    - name: deploy firewall rule
+      command: iptables -I INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+
+    - name: save firewall rule
+      command: service iptables save
+
+    - name: reload firewall
+      service: name=iptables state=restarted
+
+    - name: Start NGINX
+      service: name=nginx state=started enabled=yes
+
+    - name: wait for NGINX to start
+      wait_for: port=80

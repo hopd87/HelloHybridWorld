@@ -1,0 +1,21 @@
+---
+java_ver: 1.8
+tc_ver: 8.0.30
+tc_name: "apache-tomcat-{{tc_ver}}"
+tc_install_base: "/usr/share"
+tc_instance_name: "tomcat_BASE"
+tc_install_path: "{{tc_install_base}}/{{tc_instance_name}}/{{tc_name}}"
+
+# Here are variables related to the Tomcat installation
+# default connector_port: 8080
+# default redirector_port: 8443
+# default shutdown_port: 8005
+# default ajp_port:8009
+connector_port: 8080
+redirect_port: 8443
+shutdown_port: 8005
+ajp_port: 8009
+
+# This will configure a default manager-gui user:
+tc_admin_username: admin
+tc_admin_password: password

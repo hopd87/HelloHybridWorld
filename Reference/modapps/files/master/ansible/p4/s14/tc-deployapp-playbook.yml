@@ -1,0 +1,24 @@
+---
+- hosts: tcservers
+  vars:
+    tc_install_path: "/usr/share/tomcat/webapps"
+
+    app_path: "/root/Development/MA-Backend/target"
+    app_name: ETAPP-REST-1.war
+
+  tasks:
+    - name: Does the app already exist in Tomcat
+      stat: path="{{tc_install_path}}/{{app_name}}"
+      register: dstpath
+
+    - name: Remove existing version of the app from Tomcat
+      file: path="{{tc_install_path}}/{{app_name}}" state=absent
+      when: dstpath.stat.exists == true
+
+    - name: Copy the app into Tomcat
+      copy: src="{{app_path}}/{{app_name}}" dest="{{tc_install_path}}"
+      notify: Restart Tomcat
+
+  handlers:
+    - name: Restart Tomcat 
+      service: name=tomcat state=restarted

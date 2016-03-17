@@ -1,0 +1,20 @@
+---
+- hosts: tcservers
+  tasks:
+    - name: Does the app already exist in Tomcat
+      stat: path=/usr/share/tomcat/webapps/ETAPP-REST-1.war
+      register: dstpath
+
+    - debug: var=dstpath
+
+    - name: Remove existing version of the app from Tomcat
+      file: path=/usr/share/tomcat/webapps/ETAPP-REST-1.war state=absent
+      when: dstpath.stat.exists == true
+
+    - name: Copy the app into Tomcat
+      copy:
+        src=/root/Development/MA-Backend/target/ETAPP-REST-1.war
+        dest=/usr/share/tomcat/webapps
+
+    - name: Restart Tomcat 
+      service: name=tomcat state=restarted

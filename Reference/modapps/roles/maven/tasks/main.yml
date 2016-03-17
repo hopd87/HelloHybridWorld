@@ -1,0 +1,40 @@
+---
+- debug: msg="Deploying Maven on {{ansible_hostname}} {{ansible_default_ipv4.address}}
+              Deploying java Version={{java_ver}}"
+
+- name: Install EPEL on CentOS
+  yum: name=epel-release state=installed
+  when: ansible_distribution == 'CentOS'
+
+- name: Download EPEL on RHEL
+  get_url: url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm dest=/tmp
+  when: ansible_distribution == 'RedHat'
+
+- name: Install EPEL on RHEL
+  yum: name=/tmp/epel-release-latest-7.noarch.rpm state=present
+  when: ansible_distribution == 'RedHat'
+
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: Install Java {{java_ver}}
+  yum: name=java-{{java_ver}}.0-openjdk-devel state=present
+
+- name: Ensure that Java {{java_ver}} is the default alternative java selected
+  alternatives: name=java path=/usr/lib/jvm/jre-{{java_ver}}.0-openjdk.x86_64/bin/java
+
+- name: Ensure that Java {{java_ver}} is the default alternative javac selected
+  alternatives: name=javac path=/usr/lib/jvm/java-{{java_ver}}.0-openjdk.x86_64/bin/javac
+
+- name: Download maven
+  get_url: url={{mvn_download_url}} dest={{mvn_tgz_path}}
+
+- name: Extract archive
+  command: chdir="{{mvn_install_base}}" /bin/tar xvf {{mvn_tgz_path}} -C "{{mvn_install_base}}" creates={{mvn_install_path}}
+
+- name: Create symlink to maven executable in /usr/bin
+  file: src={{mvn_install_path}}/bin/mvn dest=/usr/bin/mvn state=link
+
+- name: Setup Maven environment variables
+  template: src=maven.sh dest=/etc/profile.d mode=0644

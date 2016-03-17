@@ -1,0 +1,97 @@
+---
+- debug: msg="Deploying Jenkins on {{ansible_hostname}} {{ansible_default_ipv4.address}}
+              Deploying java Version={{java_ver}}
+              Tomcat instance name {{tc_instance_name}} install base {{tc_install_base}} install path {{tc_install_path}}"
+
+- name: Install EPEL on CentOS
+  yum: name=epel-release state=installed
+  when: ansible_distribution == 'CentOS'
+
+- name: Download EPEL on RHEL
+  get_url: url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm dest=/tmp
+  when: ansible_distribution == 'RedHat'
+
+- name: Install EPEL on RHEL
+  yum: name=/tmp/epel-release-latest-7.noarch.rpm state=present
+  when: ansible_distribution == 'RedHat'
+
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: Install Java {{java_ver}}
+  yum: name=java-{{java_ver}}.0-openjdk-devel state=present
+
+- name: Ensure that Java {{java_ver}} is the default alternative java selected
+  alternatives: name=java path=/usr/lib/jvm/jre-{{java_ver}}.0-openjdk.x86_64/bin/java
+
+- name: Ensure that Java {{java_ver}} is the default alternative javac selected
+  alternatives: name=javac path=/usr/lib/jvm/java-{{java_ver}}.0-openjdk.x86_64/bin/javac
+
+- name: add group "tomcat"
+  group: name=tomcat
+
+- name: add user "tomcat"
+  user:
+    name: tomcat
+    group: tomcat
+    password: "{{'tomcat'|password_hash('sha512')}}"
+    shell: /bin/bash
+    generate_ssh_key: yes
+    ssh_key_file: .ssh/id_rsa
+    update_password: on_create
+  register: usradd
+
+- name: Fetch SSH key for tomcat
+  fetch: src="{{usradd.home}}/.ssh/id_rsa.pub" dest="/tmp/id_rsa.pub.tomcat.{{ansible_hostname}}" flat=yes
+
+- name: Give root SSH access to this user
+  authorized_key: user=tomcat key="{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+- name: Download Tomcat
+  get_url: url={{tc_download_url}} dest={{tc_tgz_path}}
+
+- name: Make directory for Tomcat instance
+  file: path="{{tc_install_base}}/{{tc_instance_name}}" state=directory
+
+- name: Extract archive
+  command: chdir="{{tc_install_base}}/{{tc_instance_name}}" /bin/tar xvf {{tc_tgz_path}} -C "{{tc_install_base}}/{{tc_instance_name}}" creates={{tc_install_path}}
+
+- name: Change ownership of Tomcat installation
+  file: path={{tc_install_path}}/ owner=tomcat group=tomcat state=directory recurse=yes
+
+- name: Save default server.xml file
+  command: mv {{tc_install_path}}/conf/server.xml {{tc_install_path}}/conf/server.xml.default removes={{tc_install_path}}/conf/server.xml creates={{tc_install_path}}/conf/server.xml.default 
+
+- name: Configure Tomcat server
+  template: src=server.xml dest={{tc_install_path}}/conf/
+
+- name: Save default tomcat-users.xml file
+  command: mv {{tc_install_path}}/conf/tomcat-users.xml {{tc_install_path}}/conf/tomcat-users.xml.default removes={{tc_install_path}}/conf/tomcat-users.xml creates={{tc_install_path}}/conf/tomcat-users.xml.default 
+
+- name: Configure Tomcat users
+  template: src=tomcat-users.xml dest={{tc_install_path}}/conf/
+
+- name: Install Tomcat init script
+  template: src=tomcat-initscript.sh dest=/etc/init.d/{{tc_instance_name}} mode=0755
+
+- name: deploy firewall rule
+  command: iptables -I INPUT -p tcp -m tcp --dport {{connector_port}} -j ACCEPT
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: save firewall rule
+  command: service iptables save
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: deploy firewall rule
+  command: firewall-cmd --zone=public --add-port={{connector_port}}/tcp --permanent
+  notify: reload firewall
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7'
+
+- name: Start Tomcat
+  service: name={{tc_instance_name}} state=started enabled=yes
+
+- name: wait for tomcat to start
+  wait_for: port={{connector_port}}

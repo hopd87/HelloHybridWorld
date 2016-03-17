@@ -1,0 +1,38 @@
+[devservers]
+192.168.1.26 ansible_connection=local
+192.168.1.27 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[tcservers]
+192.168.1.23 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[haservers]
+192.168.1.23 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.24 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[dbservers]
+192.168.1.23 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[gitservers]
+192.168.1.22 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[lbservers]
+192.168.1.22 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[aservers]
+192.168.1.26 ansible_connection=local
+
+[naservers]
+192.168.1.22 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.23 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.24 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.27 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[linux]
+192.168.1.22 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.23 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.24 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+192.168.1.26 ansible_connection=local
+192.168.1.27 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123
+
+[windows]
+192.168.1.25 ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=emc123

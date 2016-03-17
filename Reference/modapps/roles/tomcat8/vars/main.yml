@@ -1,0 +1,4 @@
+---
+tc_tgz_name: "{{tc_name}}.tar.gz"
+tc_download_url: "http://mirror.sdunix.com/apache/tomcat/tomcat-8/v{{tc_ver}}/bin/{{tc_tgz_name}}"
+tc_tgz_path: "/usr/share/{{tc_tgz_name}}"

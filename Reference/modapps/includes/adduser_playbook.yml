@@ -1,0 +1,40 @@
+- name: Install the libselinux-python package
+  yum: name=libselinux-python state=installed
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- debug: msg="Adding user {{user_name}} into group {{user_group}} and setting password to {{user_pass}}"
+
+- name: add group
+  group: name={{user_group}}
+
+- name: add user account
+  user:
+    name: "{{user_name}}"
+    group: "{{user_group}}"
+    password: "{{user_pass|password_hash('sha512')}}"
+    shell: /bin/bash
+    generate_ssh_key: yes
+    ssh_key_file: .ssh/id_rsa
+    update_password: on_create
+  register: usradd
+
+- name: Give root SSH access to this user
+  authorized_key: user={{user_name}} key="{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+- name: Copy .bashrc
+  copy: src=~/modapps/files/.bashrc dest={{usradd.home}} owner={{user_name}} group={{user_group}}
+
+- name: Copy .bash_profile
+  template: src=~/modapps/templates/.bash_profile dest={{usradd.home}} owner={{user_name}} group={{user_group}}
+
+- name: Copy .vimrc
+  copy: src=~/modapps/files/.vimrc dest={{usradd.home}} owner={{user_name}} group={{user_group}}
+
+- name: Copy .gvimrc
+  copy: src=~/modapps/files/.gvimrc dest={{usradd.home}} owner={{user_name}} group={{user_group}}
+
+- name: Copy .vim directory
+  synchronize: src=~/modapps/files/.vim dest={{usradd.home}}
+
+- name: Change ownership of .vim directory
+  file: path={{usradd.home}}/.vim owner={{user_name}} group={{user_group}} state=directory recurse=yes

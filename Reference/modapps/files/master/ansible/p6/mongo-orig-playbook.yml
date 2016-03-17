@@ -1,0 +1,38 @@
+---
+- hosts: dbservers
+  vars:
+    svcname: mongod
+
+  tasks:
+    - name: Copy MongoDB repo definiton
+      copy: src=files/mongodb.repo dest=/etc/yum.repos.d
+
+    - name: Install MongoDB
+      yum: name=mongodb-org state=present
+
+    - name: Save default mongod.conf file
+      command:
+        cp /etc/mongod.conf /etc/mongod.conf.default
+        creates=/etc/mongod.conf.default
+
+    - name: Allow MongoDB to listen for all connections
+      lineinfile: dest=/etc/mongod.conf regexp='bindIp' state=absent
+
+    - name: Start MongoDB
+      service: name={{svcname}} state=started
+
+    - name: deploy firewall rule
+      command: iptables -I INPUT -p tcp -m tcp --dport 27017 -j ACCEPT
+      notify: reload firewall
+
+    - name: save firewall rule
+      command: service iptables save
+      notify: reload firewall
+
+  handlers:
+    - name: reload firewall
+      service: name=iptables state=restarted
+
+    - name: restart mongodb
+      service: name={{svcname}} state=restarted
+

@@ -1,0 +1,4 @@
+---
+mvn_tgz_name: "{{mvn_name}}-bin.tar.gz"
+mvn_download_url: "http://mirror.sdunix.com/apache/maven/maven-3/{{mvn_ver}}/binaries/{{mvn_tgz_name}}"
+mvn_tgz_path: "/usr/share/{{mvn_tgz_name}}"
